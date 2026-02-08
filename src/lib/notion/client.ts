@@ -176,3 +176,20 @@ export async function getPostsByPage(page: number) {
   const endIndex = startIndex + NUMBER_OF_POSTS_PER_PAGE
   return allPosts.slice(startIndex, endIndex)
 }
+export async function getNumberOfPagesByTag(tag: string) {
+  const allPosts = await getAllPosts()
+  const postsByTag = allPosts.filter(
+    (post) => post.Tags.some((t) => t.name === tag)
+  )
+  return Math.ceil(postsByTag.length / NUMBER_OF_POSTS_PER_PAGE)
+}
+
+export async function getPostsByTagAndPage(tag: string, page: number) {
+  const allPosts = await getAllPosts()
+  const postsByTag = allPosts.filter(
+    (post) => post.Tags.some((t) => t.name === tag)
+  )
+  const startIndex = (page - 1) * NUMBER_OF_POSTS_PER_PAGE
+  const endIndex = startIndex + NUMBER_OF_POSTS_PER_PAGE
+  return postsByTag.slice(startIndex, endIndex)
+}
