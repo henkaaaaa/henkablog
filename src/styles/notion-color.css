@@ -102,3 +102,19 @@
   color: rgb(28, 56, 41);
   background: rgb(255, 226, 221) !important;
 }
+/* 小説用の縦書きクラス */
+.novel-mode {
+  writing-mode: vertical-rl; /* 縦書きにする */
+  text-orientation: mixed;   /* 文字の向きを調整 */
+  height: 60vh;             /* 画面の高さに合わせる */
+  overflow-x: auto;         /* 横にスクロールできるようにする */
+  line-height: 2;           /* 行間を広くして読みやすく */
+  padding: 2rem;
+  margin: 0 auto;
+  font-family: "Sawarabi Mincho", serif; /* 小説っぽい明朝体 */
+}
+
+/* 横書き（ブログ）はそのまま */
+.blog-mode {
+  writing-mode: horizontal-tb;
+}

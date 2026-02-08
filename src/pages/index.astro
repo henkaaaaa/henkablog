@@ -1,58 +1,219 @@
----
+﻿---
 import { NUMBER_OF_POSTS_PER_PAGE } from '../server-constants.ts'
-import {
-  getPosts,
-  getRankedPosts,
-  getAllTags,
-  getNumberOfPages,
-} from '../lib/notion/client.ts'
+import { getAllPosts, getAllTags } from '../lib/notion/client.ts'
 import Layout from '../layouts/Layout.astro'
-import NoContents from '../components/NoContents.astro'
 import PostDate from '../components/PostDate.astro'
-import PostTags from '../components/PostTags.astro'
-import PostTitle from '../components/PostTitle.astro'
-import PostFeaturedImage from '../components/PostFeaturedImage.astro'
-import PostExcerpt from '../components/PostExcerpt.astro'
-import ReadMoreLink from '../components/ReadMoreLink.astro'
-import Pagination from '../components/Pagination.astro'
-import BlogPostsLink from '../components/BlogPostsLink.astro'
-import BlogTagsLink from '../components/BlogTagsLink.astro'
-import styles from '../styles/blog.module.css'
 
-const [posts, rankedPosts, tags, numberOfPages] = await Promise.all([
-  getPosts(NUMBER_OF_POSTS_PER_PAGE),
-  getRankedPosts(),
-  getAllTags(),
-  getNumberOfPages(),
-])
+const allPosts = await getAllPosts()
+const posts = allPosts.slice(0, NUMBER_OF_POSTS_PER_PAGE)
+const tags = await getAllTags()
+
+const tagCounts = tags.map(tag => {
+  const count = allPosts.filter(post => post.Tags.some(t => t.name === tag.name)).length
+  return { ...tag, count }
+}).sort((a, b) => b.count - a.count)
 ---
 
-<Layout>
-  <div slot="main" class={styles.main}>
-    {
-      posts.length === 0 ? (
-        <NoContents contents={posts} />
-      ) : (
-        posts.map((post) => (
-          <div class={styles.post} key={post.Slug}>
-            <PostDate post={post} />
-            <PostTags post={post} />
-            <PostTitle post={post} />
-            <PostFeaturedImage post={post} />
-            <PostExcerpt post={post} />
-            <ReadMoreLink post={post} />
+<Layout title="返歌-Library">
+  <div slot="main" class="viewport-protector">
+    <div class="library-shell">
+      
+      <aside class="side-nav left">
+        <div class="sticky-wrapper">
+          <h3 class="side-label">Recent Comments</h3>
+          <div id="recent-comments-list" class="comment-stream">
+            <p class="loading">Loading...</p>
           </div>
-        ))
-      )
-    }
+        </div>
+      </aside>
 
-    <footer>
-      <Pagination currentPage={1} numberOfPages={numberOfPages} />
-    </footer>
-  </div>
+      <main class="core-content">
+        <header class="content-header">
+          <span class="entry-status">{allPosts.length} entries in collection</span>
+        </header>
 
-  <div slot="aside" class={styles.aside}>
-    <BlogPostsLink heading="Recommended" posts={rankedPosts} />
-    <BlogTagsLink heading="Categories" tags={tags} />
+        <section class="banner-stage">
+          <div class="banner-viewport">
+            <button class="slider-nav prev" id="prev-btn">❮</button>
+            <button class="slider-nav next" id="next-btn">❯</button>
+            <div class="slider-track" id="slider-track">
+              <div class="slide"><img src="/banners/event1.jpg" alt="1" onerror="this.src='https://placehold.jp/24/333/fff/1200x400.png?text=Library%20News%2001'"/></div>
+              <div class="slide"><img src="/banners/event2.jpg" alt="2" onerror="this.src='https://placehold.jp/24/444/fff/1200x400.png?text=Library%20News%2002'"/></div>
+              <div class="slide"><img src="/banners/event3.jpg" alt="3" onerror="this.src='https://placehold.jp/24/555/fff/1200x400.png?text=Library%20News%2003'"/></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="article-grid">
+          {posts.map((post) => (
+            <article class="entry-card">
+              <div class="entry-meta">
+                <PostDate post={post} />
+                <div class="entry-tags">
+                  {post.Tags.map((tag) => <span class={`badge ${tag.color}`}>{tag.name}</span>)}
+                </div>
+              </div>
+              <a href={`/posts/${post.Slug}`} class="entry-link">
+                <h2 class="entry-title">{post.Title}</h2>
+              </a>
+              <div class="entry-abstract">
+                <span class="label">Synopsis</span>
+                <p>{post.Excerpt || "No synopsis available."}</p>
+              </div>
+              <div class="entry-footer">
+                <a href={`/posts/${post.Slug}`} class="read-more">Read more →</a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </main>
+
+      <aside class="side-nav right">
+        <div class="sticky-wrapper">
+          <div class="widget">
+            <h3 class="side-label">Search</h3>
+            <input type="text" id="search-input" class="search-field" placeholder="アーカイブを検索..." />
+          </div>
+          <div class="widget">
+            <h3 class="side-label">Tag Ranking</h3>
+            <nav class="tag-cloud">
+              {tagCounts.map(tag => (
+                <a href={`/posts/tag/${tag.name}`} class="tag-row">
+                  <span class={`t-name ${tag.color}`}>#{tag.name}</span>
+                  <span class="t-count">{tag.count}</span>
+                </a>
+              ))}
+            </nav>
+          </div>
+        </div>
+      </aside>
+
+    </div>
   </div>
 </Layout>
+
+<style>
+  :root { font-size: 15px; } 
+
+  .viewport-protector {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+
+  .library-shell {
+    display: grid;
+    /* 左右のバランスを 4K 向けに再調整 */
+    grid-template-columns: 220px minmax(500px, 820px) 260px;
+    gap: 60px;
+    width: 96%;
+    max-width: 1500px; 
+    padding: 60px 0;
+  }
+
+  .sticky-wrapper { position: sticky; top: 30px; }
+  .core-content { min-width: 0; }
+
+  /* コンテンツ開始位置の調整 */
+  .content-header { margin-bottom: 20px; }
+  .entry-status { font-size: 0.85rem; color: #999; font-style: italic; }
+
+  /* バナー */
+  .banner-stage { margin-bottom: 50px; width: 100%; }
+  .banner-viewport {
+    width: 100%;
+    aspect-ratio: 21 / 7;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background: #f4f4f4;
+  }
+  .slider-track {
+    display: flex;
+    height: 100%;
+    gap: 20px;
+    transition: transform 0.7s cubic-bezier(0.2, 1, 0.3, 1);
+  }
+  .slide { flex: 0 0 88%; border-radius: 8px; overflow: hidden; }
+  .slide img { width: 100%; height: 100%; object-fit: cover; }
+
+  .slider-nav {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.95); cursor: pointer;
+  }
+  .prev { left: 15px; } .next { right: 15px; }
+
+  /* 記事 */
+  .entry-card { margin-bottom: 60px; border-bottom: 1px solid #f2f2f2; padding-bottom: 40px; }
+  .entry-title { 
+    font-family: "Sawarabi Mincho", serif; 
+    font-size: 1.7rem; 
+    color: #111; 
+    margin: 12px 0; 
+    line-height: 1.4;
+  }
+  .entry-abstract { background: #fafafa; border-left: 3px solid #111; padding: 18px 24px; margin: 15px 0; }
+  .entry-abstract p { font-size: 0.95rem; line-height: 1.8; color: #444; margin: 0; }
+  
+  /* タグ・バッジ */
+  .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 6px; }
+  .default { background: #eee; color: #666; }
+  .blue { background: #e1f0ff; color: #0070f3; }
+  .green { background: #e2f5ea; color: #28a745; }
+  .pink { background: #ffe9f3; color: #d53f8c; }
+  .orange { background: #fff4e5; color: #fb8c00; }
+  .purple { background: #f3f0ff; color: #7950f2; }
+  .red { background: #ffebee; color: #e53935; }
+
+  /* サイドバー */
+  .side-label { font-size: 0.75rem; color: #bbb; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 20px; }
+  .tag-row { display: flex; justify-content: space-between; text-decoration: none; color: #555; font-size: 0.95rem; margin-bottom: 14px; }
+  .t-count { font-size: 0.75rem; color: #ccc; }
+  .search-field { width: 100%; padding: 10px; border: 1px solid #eee; border-radius: 4px; }
+
+  @media (max-width: 1300px) {
+    .library-shell { grid-template-columns: 1fr 260px; gap: 30px; }
+    .left { display: none; }
+  }
+  @media (max-width: 900px) {
+    .library-shell { grid-template-columns: 1fr; width: 92%; }
+    .right { order: -1; margin-bottom: 40px; position: static; }
+    .banner-viewport { aspect-ratio: 16 / 9; }
+    .slide { flex: 0 0 92%; }
+    .entry-title { font-size: 1.5rem; }
+  }
+</style>
+
+<script>
+  let currentIdx = 0;
+  const track = document.getElementById('slider-track');
+  const slides = document.querySelectorAll('.slide');
+
+  function update() {
+    if (!track) return;
+    const viewportWidth = track.parentElement.offsetWidth;
+    const slideRatio = window.innerWidth > 900 ? 0.88 : 0.92;
+    const slideWidth = viewportWidth * slideRatio;
+    const gap = 20;
+    const offset = (slideWidth + gap) * currentIdx;
+    track.style.transform = `translateX(-${offset}px)`;
+  }
+
+  document.getElementById('next-btn')?.addEventListener('click', () => {
+    currentIdx = (currentIdx + 1) % slides.length;
+    update();
+  });
+
+  document.getElementById('prev-btn')?.addEventListener('click', () => {
+    currentIdx = (currentIdx - 1 + slides.length) % slides.length;
+    update();
+  });
+
+  window.addEventListener('resize', update);
+  document.addEventListener('DOMContentLoaded', update);
+</script>

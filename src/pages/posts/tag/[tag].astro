@@ -1,94 +1,61 @@
 ---
-import type { SelectProperty } from '../../../lib/interfaces.ts'
-import { NUMBER_OF_POSTS_PER_PAGE } from '../../../server-constants.ts'
-import {
-  getPostsByTag,
-  getRankedPosts,
-  getAllTags,
-  getNumberOfPagesByTag,
-} from '../../../lib/notion/client.ts'
+import { getAllPosts, getAllTags } from '../../../lib/notion/client.ts'
 import Layout from '../../../layouts/Layout.astro'
-import NoContents from '../../../components/NoContents.astro'
 import PostDate from '../../../components/PostDate.astro'
-import PostTags from '../../../components/PostTags.astro'
-import PostTitle from '../../../components/PostTitle.astro'
-import PostFeaturedImage from '../../../components/PostFeaturedImage.astro'
-import PostExcerpt from '../../../components/PostExcerpt.astro'
-import ReadMoreLink from '../../../components/ReadMoreLink.astro'
-import Pagination from '../../../components/Pagination.astro'
-import BlogPostsLink from '../../../components/BlogPostsLink.astro'
-import BlogTagsLink from '../../../components/BlogTagsLink.astro'
-import styles from '../../../styles/blog.module.css'
-import '../../../styles/notion-color.css'
 
 export async function getStaticPaths() {
-  const allTags = await getAllTags()
-  return allTags.map((tag: SelectProperty) => ({ params: { tag: tag.name } }))
+  const tags = await getAllTags()
+  return tags.map((tag) => ({
+    params: { tag: tag.name },
+    props: { tag },
+  }))
 }
 
 const { tag } = Astro.params
+const { tag: tagObj } = Astro.props
 
-const [posts, rankedPosts, tags, numberOfPages] = await Promise.all([
-  getPostsByTag(tag, NUMBER_OF_POSTS_PER_PAGE),
-  getRankedPosts(),
-  getAllTags(),
-  getNumberOfPagesByTag(tag),
-])
-
-const currentTag = posts[0].Tags.find((t) => t.name === tag)
+const allPosts = await getAllPosts()
+const posts = allPosts.filter((post) =>
+  post.Tags.some((t) => t.name === tag)
+)
 ---
 
-<Layout title={`Posts in ${tag}`} path={`/posts/tag/${tag}`}>
-  <div slot="main" class={styles.main}>
-    <header>
-      <div class="tag-container">
-        <span class={`tag ${currentTag.color}`}>{tag}</span>
-      </div>
+<Layout title={`Tag: ${tag}`}>
+  <div slot="main" class="tag-archive-container">
+    <header class="archive-header">
+      <span class="label">Category / íIî‘çÜ</span>
+      <h1>#{tag}</h1>
+      <p class="count">{posts.length} entries found</p>
     </header>
 
-    {
-      posts.length === 0 ? (
-        <NoContents contents={posts} />
-      ) : (
-        posts.map((post) => (
-          <div class={styles.post} key={post.Slug}>
-            <PostDate post={post} />
-            <PostTags post={post} />
-            <PostTitle post={post} />
-            <PostFeaturedImage post={post} />
-            <PostExcerpt post={post} />
-            <ReadMoreLink post={post} />
-          </div>
-        ))
-      )
-    }
+    <div class="post-list">
+      {posts.map((post) => (
+        <article class="archive-item">
+          <PostDate post={post} />
+          <a href={`/posts/${post.Slug}`}>
+            <h2>{post.Title}</h2>
+          </a>
+        </article>
+      ))}
+    </div>
 
-    <footer>
-      <Pagination tag={tag} currentPage={1} numberOfPages={numberOfPages} />
+    <footer class="archive-footer">
+      <a href="/">Å© Back to Library Top</a>
     </footer>
-  </div>
-
-  <div slot="aside" class={styles.aside}>
-    <BlogPostsLink heading="Recommended" posts={rankedPosts} />
-    <BlogTagsLink heading="Categories" tags={tags} />
   </div>
 </Layout>
 
 <style>
-  .tag-container {
-    margin: 0;
-    line-height: 1.3;
-    font-size: 1.2rem;
-    font-weight: normal;
-  }
-  @media (max-width: 640px) {
-    .tag-container {
-      font-size: 1.15rem;
-    }
-  }
-  .tag-container span.tag {
-    border-radius: 4px;
-    padding: 3px 9px;
-    background: var(--tag-bg-light-gray);
-  }
+  .tag-archive-container { max-width: 700px; margin: 60px auto; padding: 0 20px; }
+  .archive-header { text-align: center; margin-bottom: 80px; border-bottom: 1px solid #eee; padding-bottom: 40px; }
+  .label { font-size: 0.75rem; color: #aaa; letter-spacing: 0.2em; text-transform: uppercase; }
+  h1 { font-family: "Sawarabi Mincho", serif; font-size: 2.5rem; margin: 10px 0; }
+  .count { color: #888; font-family: serif; font-style: italic; }
+  
+  .archive-item { margin-bottom: 40px; }
+  .archive-item h2 { font-family: "Sawarabi Mincho", serif; font-size: 1.4rem; margin: 5px 0; }
+  .archive-item a { text-decoration: none; color: #1a1a1a; }
+  
+  .archive-footer { margin-top: 100px; text-align: center; }
+  .archive-footer a { color: #aaa; text-decoration: none; font-size: 0.9rem; }
 </style>

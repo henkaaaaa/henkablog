@@ -1,22 +1,33 @@
+/* メインヘッダー：タイトル周りにゆとりを持たせる */
 .main header {
-  padding: 0 0 20px;
+  padding: 40px 0 60px; /* 下方向の余白を広げて呼吸させる */
+  text-align: center;   /* タイトルを中央に寄せて図書館の表紙風に */
 }
+
+/* メインフッター：境界線をより繊細に */
 .main footer {
-  border-top: 1px dashed #888;
-  margin: 0 auto;
-  padding: 40px 0 0;
+  border-top: 1px solid #eee; /* 点線をやめて、ごく薄い実線に */
+  margin: 60px auto 0;
+  padding: 60px 0 0;
+  max-width: 600px;           /* フッターも絞って視線を散らさない */
 }
+
 @media (max-width: 640px) {
   .main footer {
-    margin: 0 auto 40px;
+    margin: 40px auto 80px;
+    padding: 40px 20px 0;
   }
 }
 
+/* 記事エリア：一冊の本のような独立感 */
 .post {
-  margin: 0 auto 40px;
+  margin: 0 auto 80px;
+  max-width: 720px;           /* 読みやすさを追求した幅 */
+  line-height: 2;             /* 行間を広げて現代的に */
 }
+
 .post footer {
-  margin-top: 0.5rem;
-  padding: 0;
-  border: 0;
+  margin-top: 4rem;           /* 本文が終わってからタグ等が出るまでの余白 */
+  padding: 2rem 0;
+  border-top: 1px solid #f9f9f9; /* 本文のすぐ下にごく薄い線を */
 }

@@ -1,7 +1,5 @@
-export const NOTION_API_SECRET =
-  import.meta.env.NOTION_API_SECRET || process.env.NOTION_API_SECRET || ''
-export const DATABASE_ID =
-  import.meta.env.DATABASE_ID || process.env.DATABASE_ID || ''
+export const NOTION_API_SECRET = import.meta.env.NOTION_API_SECRET || process.env.NOTION_API_SECRET || '';
+export const DATABASE_ID = import.meta.env.DATABASE_ID || process.env.DATABASE_ID || '';
 
 export const CUSTOM_DOMAIN =
   import.meta.env.CUSTOM_DOMAIN || process.env.CUSTOM_DOMAIN || '' // <- Set your costom domain if you have. e.g. alpacat.com
@@ -15,3 +13,6 @@ export const REQUEST_TIMEOUT_MS = parseInt(
   10
 )
 export const ENABLE_LIGHTBOX = import.meta.env.ENABLE_LIGHTBOX
+// Šù‘¶‚ÌƒR[ƒh‚Ì‰º‚É’Ç‹L
+export const SITE_TITLE = '•Ô‰Ì-Library'
+export const SITE_DESCRIPTION = '—[•é‚ê}‘ŠÙ'

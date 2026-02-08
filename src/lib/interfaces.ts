@@ -12,6 +12,13 @@ export interface Post {
   Cover: FileObject | null
   Slug: string
   Date: string
+  Category: string
+  LastUpdatedDate: string
+  Excerpt: string
+  Status: {
+    name: string
+    color: string
+  }
   Tags: SelectProperty[]
   Excerpt: string
   FeaturedImage: FileObject | null

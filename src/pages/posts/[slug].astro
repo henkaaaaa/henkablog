@@ -1,127 +1,398 @@
----
-import * as interfaces from '../../lib/interfaces.ts'
-import {
-  getPosts,
-  getAllPosts,
-  getRankedPosts,
-  getPostBySlug,
-  getPostsByTag,
-  getBlock,
-  getAllTags,
-  getAllBlocksByBlockId,
-  downloadFile,
-} from '../../lib/notion/client.ts'
-import {
-  getPostLink,
-  filePath,
-  extractTargetBlocks,
-} from '../../lib/blog-helpers.ts'
+﻿---
 import Layout from '../../layouts/Layout.astro'
-import PostDate from '../../components/PostDate.astro'
-import PostTags from '../../components/PostTags.astro'
-import PostTitle from '../../components/PostTitle.astro'
-import PostBody from '../../components/PostBody.astro'
-import PostRelativeLink from '../../components/PostRelativeLink.astro'
-import BlogPostsLink from '../../components/BlogPostsLink.astro'
-import BlogTagsLink from '../../components/BlogTagsLink.astro'
+import { getAllPosts, getPostBySlug, getAllBlocksByBlockId } from '../../lib/notion/client.ts'
+import NotionBlocks from '../../components/NotionBlocks.astro'
 import styles from '../../styles/blog.module.css'
 
 export async function getStaticPaths() {
   const posts = await getAllPosts()
-  return posts.map((post: interfaces.Post) => ({ params: { slug: post.Slug } }))
+  return posts.map((post) => ({ params: { slug: post.Slug } }))
 }
 
 const { slug } = Astro.params
-
 const post = await getPostBySlug(slug)
-if (!post) {
-  throw new Error(`Post not found. slug: ${slug}`)
-}
+if (!post) throw new Error(`Post not found: ${slug}`)
 
-const [blocks, allPosts, rankedPosts, recentPosts, tags, postsHavingSameTag] =
-  await Promise.all([
-    getAllBlocksByBlockId(post.PageId),
-    getAllPosts(),
-    getRankedPosts(),
-    getPosts(5),
-    getAllTags(),
-    getPostsByTag(post.Tags[0]?.name, 6),
-  ])
+const blocks = await getAllBlocksByBlockId(post.PageId)
 
-const fileAtacchedBlocks = extractTargetBlocks('image', blocks)
-  .concat(extractTargetBlocks('file', blocks))
-  .filter((block) => {
-    if (!block) {
-      return false
-    }
-    const imageOrFile = block.Image || block.File
-    return imageOrFile && imageOrFile.File && imageOrFile.File.Url
-  })
-
-// Download files
-await Promise.all(
-  fileAtacchedBlocks
-    .map(async (block) => {
-      const expiryTime = (block.Image || block.File).File.ExpiryTime
-      if (Date.parse(expiryTime) > Date.now()) {
-        return Promise.resolve(block)
-      }
-      return getBlock(block.Id)
-    })
-    .map((promise) =>
-      promise.then((block) => {
-        let url!: URL
-        try {
-          url = new URL((block.Image || block.File).File.Url)
-        } catch {
-          console.log('Invalid file URL: ', (block.Image || block.File)?.File?.Url)
-          return Promise.reject()
-        }
-        return Promise.resolve(url)
-      })
-    )
-    .map((promise) => promise.then(downloadFile))
-)
-
-const currentPostIndex = allPosts.findIndex((post) => post.Slug === slug)
-const prevPost = allPosts[currentPostIndex + 1]
-const nextPost = allPosts[currentPostIndex - 1]
-
-let ogImage = ''
-if (post.FeaturedImage && post.FeaturedImage.Url) {
-  ogImage = new URL(filePath(new URL(post.FeaturedImage.Url)), Astro.site)
-}
+const allPosts = await getAllPosts()
+const postIndex = allPosts.findIndex((p) => p.Slug === slug)
+const prevPost = allPosts[postIndex + 1]
+const nextPost = allPosts[postIndex - 1]
 ---
 
-<Layout
-  title={post.Title}
-  description={post.Excerpt}
-  path={getPostLink(post.Slug)}
-  ogImage={ogImage}
->
-  <div slot="main" class={styles.main}>
-    <div class={styles.post}>
-      <PostDate post={post} />
-      <PostTags post={post} />
-      <PostTitle post={post} enableLink={false} />
-      <PostBody blocks={blocks} />
-      <PostTags post={post} />
+<Layout title={post.Title} description={post.Excerpt} path={post.Slug}>
+  <div slot="main" class="viewport-protector">
+    <div class="library-shell">
+      
+      <main class="core-content">
+        
+        <header class="title-section">
+          <h1 class="post-title">{post.Title}</h1>
+        </header>
 
-      <footer>
-        <PostRelativeLink prevPost={prevPost} nextPost={nextPost} />
-      </footer>
-    </div>
-  </div>
+        <div class="layout-switcher">
+          <button id="set-horizontal" class="switch-btn">Standard (横書き)</button>
+          <button id="set-vertical" class="switch-btn">Novel (縦書き※test)</button>
+        </div>
 
-  <div slot="aside" class="aside">
-    <BlogPostsLink
-      heading="Posts in the same category"
-      posts={postsHavingSameTag.filter(
-        (p: interfaces.Post) => p.Slug !== post.Slug
-      )}
-    />
-    <BlogPostsLink heading="Recommended" posts={rankedPosts} />
-    <BlogPostsLink heading="Latest posts" posts={recentPosts} />
-    <BlogTagsLink heading="Categories" tags={tags} />
+        <div id="writing-wrapper" class="blog-mode content-body">
+          <section class="post-body">
+            {blocks.map((block) => (
+              <NotionBlocks block={block} />
+            ))}
+          </section>
+        </div>
+
+        <div class="interaction-container">
+          <div class="stamp-selection">
+            <p class="section-label">Read & Stamped</p>
+            <div class="stamp-buttons">
+              <button class="stamp-trigger" data-stamp="1">
+                <img src="/stamps/stamp1_static.png" alt="Stamp 1" />
+                <span class="count" id="count-1">0</span>
+              </button>
+              <button class="stamp-trigger" data-stamp="2">
+                <img src="/stamps/stamp2_static.png" alt="Stamp 2" />
+                <span class="count" id="count-2">0</span>
+              </button>
+              <button class="stamp-trigger" data-stamp="3">
+                <img src="/stamps/stamp3_static.png" alt="Stamp 3" />
+                <span class="count" id="count-3">0</span>
+              </button>
+            </div>
+          </div>
+
+          <hr class="divider" />
+
+          <div class="comment-section">
+            <h3 class="section-title">Leave a Comment</h3>
+            <div id="comment-list" class="comment-list"></div>
+            <form id="comment-form" class="comment-form">
+              <input type="text" id="comment-name" placeholder="@Your name..." class="input-name" />
+              <textarea id="comment-content" placeholder="感想をしたためる..." class="input-text" required></textarea>
+              <button type="submit" class="submit-btn" id="submit-button">寄稿する</button>
+            </form>
+          </div>
+        </div>
+
+        <nav class="post-navigation">
+          {prevPost && (
+            <a href={`/posts/${prevPost.Slug}`} class="nav-prev">
+              <span class="nav-label">Previous Entry</span>
+              <span class="nav-title">{prevPost.Title}</span>
+            </a>
+          )}
+          {nextPost && (
+            <a href={`/posts/${nextPost.Slug}`} class="nav-next">
+              <span class="nav-label">Next Entry</span>
+              <span class="nav-title">{nextPost.Title}</span>
+            </a>
+          )}
+        </nav>
+
+        <footer class="post-footer">
+          <a href="/" class="back-link">← Library Top</a>
+        </footer>
+
+      </main> </div>
   </div>
 </Layout>
+
+<script>
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+  const supabaseUrl = 'https://diyaziidypdcstzspkek.supabase.co'
+  const supabaseKey = 'sb_publishable_TF8XJr4wKI2W2aXC2EVGdA_eGJq1uCs' 
+  const supabase = createClient(supabaseUrl, supabaseKey)
+  const slug = window.location.pathname;
+
+  // --- 【1】スタンプ読み込み ---
+  async function loadCounts() {
+    const { data } = await supabase.from('reactions').select('stamp_id, count').eq('slug', slug);
+    if (data) {
+      data.forEach(item => {
+        const countEl = document.getElementById(`count-${item.stamp_id}`);
+        if (countEl) countEl.textContent = String(item.count);
+      });
+    }
+  }
+
+  // --- 【2】コメント読み込み（開閉機能削除版） ---
+  async function loadComments() {
+    const commentList = document.getElementById('comment-list');
+    if (!commentList) return;
+
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('slug', slug)
+      .order('created_at', { ascending: true });
+
+    if (error || !data) return;
+
+    if (data.length > 0) {
+      const parents = data.filter(c => !c.parent_id);
+      const children = data.filter(c => c.parent_id);
+
+      commentList.innerHTML = parents.map((p, index) => {
+        const pDate = new Date(p.created_at).toLocaleString('ja-JP', { 
+          year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+        });
+
+        const threadChildren = children.filter(c => c.parent_id === p.id);
+        
+        // 返信の生成
+        const childHtml = threadChildren.map(c => `
+          <div class="comment-item nested">
+            <div class="comment-header">
+              <span class="comment-author">@${c.name}</span>
+              <span class="comment-date">${new Date(c.created_at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <div class="comment-body">${c.content}</div>
+          </div>
+        `).join('');
+
+        const rowClass = index % 2 === 0 ? 'row-even' : 'row-odd';
+
+        return `
+          <div class="comment-group ${rowClass}">
+            <div class="comment-item">
+              <div class="comment-header">
+                <span class="comment-author">@${p.name}</span>
+                <span class="comment-date">${pDate}</span>
+              </div>
+              <div class="comment-body">${p.content}</div>
+              <div class="comment-actions">
+                <button class="reply-btn" data-id="${p.id}" data-user="${p.name}">Reply</button>
+              </div>
+            </div>
+            <div class="reply-list" id="thread-${p.id}">
+              ${childHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Replyボタンのイベントリスナー
+      document.querySelectorAll('.reply-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pId = btn.getAttribute('data-id');
+          const user = btn.getAttribute('data-user');
+          const form = document.getElementById('comment-form');
+          const input = document.getElementById('comment-content') as HTMLTextAreaElement;
+          form?.setAttribute('data-reply-to', pId || '');
+          input.value = `@${user} `;
+          input.focus();
+        });
+      });
+    } else {
+      commentList.innerHTML = '<p class="no-comment">まだ感想はありません。</p>';
+    }
+  }
+
+  // --- 【3】スタンプ送信（アニメーション機能維持） ---
+  const stampBtns = document.querySelectorAll('.stamp-trigger');
+  stampBtns.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const stampId = btn.getAttribute('data-stamp');
+      const gif = document.createElement('img');
+      gif.src = `/stamps/stamp${stampId}_anim.gif?t=${Date.now()}`;
+      gif.className = 'flying-gif';
+      const clientX = e instanceof MouseEvent ? e.clientX : (e as any).touches[0].clientX;
+      const clientY = e instanceof MouseEvent ? e.clientY : (e as any).touches[0].clientY;
+      gif.style.left = `${clientX - 30}px`;
+      gif.style.top = `${clientY - 30}px`;
+      document.body.appendChild(gif);
+      setTimeout(() => gif.remove(), 1200);
+
+      const { error } = await supabase.rpc('increment_stamp', { article_slug: slug, s_id: stampId });
+      if (!error) {
+        const countEl = document.getElementById(`count-${stampId}`);
+        if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
+      }
+    });
+  });
+
+  // --- 【4】コメント送信 ---
+  const commentForm = document.getElementById('comment-form') as HTMLFormElement | null;
+  commentForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const parentId = commentForm.getAttribute('data-reply-to') || null;
+    const nameInput = document.getElementById('comment-name') as HTMLInputElement;
+    const contentInput = document.getElementById('comment-content') as HTMLTextAreaElement;
+
+    const { error } = await supabase
+      .from('comments')
+      .insert([{ 
+        slug, 
+        name: nameInput.value || '匿名', 
+        content: contentInput.value, 
+        parent_id: parentId 
+      }]);
+
+    if (!error) {
+      nameInput.value = '';
+      contentInput.value = '';
+      commentForm.removeAttribute('data-reply-to');
+      loadComments();
+    }
+  });
+
+  // 縦書き切り替え
+  const wrapper = document.getElementById('writing-wrapper');
+  document.getElementById('set-vertical')?.addEventListener('click', () => {
+    wrapper?.classList.add('novel-mode');
+    wrapper?.classList.remove('blog-mode');
+  });
+  document.getElementById('set-horizontal')?.addEventListener('click', () => {
+    wrapper?.classList.remove('novel-mode');
+    wrapper?.classList.add('blog-mode');
+  });
+
+  loadCounts();
+  loadComments();
+</script>
+
+<style>
+  /* --- フロントページ直伝：レイアウトの要 --- */
+  .viewport-protector {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+
+  .library-shell {
+    display: grid;
+    /* フロントと同じく、中央列をメインにする grid 設定 */
+    grid-template-columns: 1fr minmax(320px, 820px) 1fr;
+    gap: 40px;
+    width: 96%;
+    max-width: 1500px;
+    padding: 60px 0;
+  }
+
+  .core-content {
+    grid-column: 2; /* 3カラムの中央を占拠 */
+    min-width: 0;   /* はみ出し防止の呪文 */
+  }
+
+  /* モバイル対応：1カラムに切り替え */
+  @media (max-width: 900px) {
+    .library-shell {
+      grid-template-columns: 1fr;
+      width: 92%;
+    }
+    .core-content {
+      grid-column: 1;
+    }
+  }
+
+  /* --- 以下、詳細ページ固有のスタイル調整 --- */
+  .title-section { text-align: center; margin-bottom: 40px; }
+  .post-title { font-family: "Sawarabi Mincho", serif; font-size: 2.4rem; color: #1a1a1a; line-height: 1.4; }
+  
+  .interaction-container { 
+    width: 100%; 
+    box-sizing: border-box; 
+    margin-top: 80px; 
+    padding: 30px; 
+    background: #fafafa; 
+    border: 1px solid #eee; 
+    border-radius: 12px; 
+  }
+
+  /* 動的要素への global 適用などは以前の通り */
+  :global(.reply-list) {
+    margin-left: 20px !important;
+    border-left: 2px solid #ccc !important;
+    padding-left: 15px !important;
+    margin-top: 10px;
+  }
+  
+  @media (min-width: 768px) {
+    :global(.reply-list) { margin-left: 45px !important; }
+  }
+  /* --- 1. 基本・縦書き設定 --- */
+  .title-section { text-align: center; margin: 80px 0 40px; }
+  .post-title { font-family: "Sawarabi Mincho", serif; font-size: 2.4rem; color: #1a1a1a; }
+  .layout-switcher { display: flex; justify-content: center; gap: 20px; margin-bottom: 40px; }
+  .switch-btn { padding: 8px 20px; cursor: pointer; border: 1px solid #ddd; background: #fff; font-family: serif; font-size: 0.8rem; }
+  .switch-btn:hover { background: #f0f0f0; }
+  :global(.novel-mode) { writing-mode: vertical-rl !important; -webkit-writing-mode: vertical-rl !important; margin: 40px auto !important; height: 70vh !important; padding: 60px 40px !important; background: #fdfaf4 !important; overflow-x: auto !important; border: 1px solid #eee; }
+
+  /* --- 2. スタンプ & コンテナ --- */
+  .interaction-container { max-width: 750px; margin: 80px auto; padding: 40px; background: #fafafa; border: 1px solid #eee; border-radius: 12px; }
+  .section-label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.2em; text-align: center; margin-bottom: 20px; }
+  .stamp-buttons { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
+  .stamp-trigger { background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
+  .stamp-trigger img { width: 50px; height: 50px; filter: grayscale(0.5); transition: 0.3s; }
+  .stamp-trigger:hover img { filter: grayscale(0); transform: translateY(-5px); }
+  .count { font-size: 0.7rem; color: #999; margin-top: 5px; }
+
+  /* --- 3. コメントリスト（動的要素には :global を使用） --- */
+  :global(.comment-list) { display: flex; flex-direction: column; gap: 20px; margin-top: 30px; }
+  :global(.comment-group) { border-radius: 12px; overflow: hidden; margin-bottom: 25px; }
+  
+  :global(.comment-group.row-even .comment-item:not(.nested)) { background: #ffffff !important; border: 1px solid #e0e0e0; }
+  :global(.comment-group.row-odd .comment-item:not(.nested)) { background: #f5f5f5 !important; border: 1px solid #dcdcdc; }
+
+  :global(.comment-item) {
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    margin-bottom: 5px;
+  }
+
+  /* 返信リストの「ぶら下げ」 */
+  :global(.reply-list) {
+    margin-left: 30px !important;
+    margin-top: 10px !important;
+    border-left: 2px solid #ccc !important;
+    padding-left: 15px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* 返信（nested）のデザイン：ここが一番重要 */
+  :global(.comment-item.nested) {
+    background-color: #f0f0f0 !important; /* 薄いグレー。画像のようにしたいなら #d9c8c1 等に変更 */
+    border: 1px solid #ddd !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    font-size: 0.8rem !important;
+  }
+
+  :global(.comment-header) {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding-bottom: 5px;
+  }
+  :global(.comment-author) { font-weight: 700; color: #1a1a1a; }
+  :global(.comment-date) { font-size: 0.7rem; color: #999; }
+  :global(.comment-body) { line-height: 1.6; color: #333; white-space: pre-wrap; }
+
+  :global(.comment-actions) { display: flex; justify-content: flex-end; align-items: center; margin-top: 10px; gap: 10px; }
+  :global(.reply-btn) { background: #1a1a1a; color: #fff; border: none; padding: 4px 12px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; }
+
+  /* --- 4. スタンプ演出 --- */
+  :global(.flying-gif) { position: fixed; pointer-events: none; z-index: 9999; animation: flyUp 1.2s ease-out forwards; }
+  @keyframes flyUp {
+    0% { transform: translateY(0) scale(0.5); opacity: 1; }
+    100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+  }
+
+  .comment-form { margin-top: 40px; padding-top: 30px; border-top: 1px solid #eee; }
+  .input-name, .input-text { width: 100%; border: 1px solid #ddd; padding: 12px; margin-bottom: 10px; box-sizing: border-box; }
+  .submit-btn { background: #1a1a1a; color: #fff; border: none; padding: 12px; cursor: pointer; width: 100%; }
+
+
+</style>
