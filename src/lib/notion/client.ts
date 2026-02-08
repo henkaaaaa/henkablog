@@ -170,3 +170,9 @@ export async function downloadFile(url: URL) { return Promise.resolve() }
 export async function getPostsByFilter(filter: any, pageSize = 10): Promise<Post[]> {
   const allPosts = await getAllPosts(); return allPosts.slice(0, pageSize)
 }
+export async function getPostsByPage(page: number) {
+  const allPosts = await getAllPosts()
+  const startIndex = (page - 1) * NUMBER_OF_POSTS_PER_PAGE
+  const endIndex = startIndex + NUMBER_OF_POSTS_PER_PAGE
+  return allPosts.slice(startIndex, endIndex)
+}
